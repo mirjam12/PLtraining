@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Workout Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #f4f4f9; padding: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 350px; margin-bottom: 20px; }
+        input, button { width: 100%; padding: 10px; margin: 5px 0; box-sizing: border-box; border-radius: 4px; border: 1px solid #ddd; }
+        button { background: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background: #0056b3; }
+        #chart-wrapper { width: 90%; max-width: 600px; height: 400px; background: white; padding: 20px; border-radius: 8px; position: relative; }
+    </style>
+</head>
+<body>
+
+    <div id="auth-section" class="card">
+        <h2>Login / Sign Up</h2>
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="handleLogin()">Login</button>
+        <button onclick="handleSignUp()" style="background: gray;">Sign Up</button>
+    </div>
+
+    <div id="main-section" style="display: none; width: 100%; max-width: 600px;">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2>Workout Tracker</h2>
+            <button onclick="handleLogout()" style="background:red; width:auto; padding: 5px 10px; font-size:12px;">Logout</button>
+        </div>
+
+        <div class="card" style="width: 100%;">
+            <input type="text" id="ui_exercise" placeholder="Exercise" oninput="loadTrends()">
+            <input type="number" id="ui_weight" placeholder="Weight (kg)">
+            <input type="number" id="ui_reps" placeholder="Reps">
+            <button onclick="saveToDatabase()">Calculate & Save</button>
+        </div>
+
+        <div id="chart-wrapper" class="card">
+            <canvas id="strengthChart"></canvas>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script>
+        
+        const SUPABASE_URL = 'https://ytlrutgvhvcxlnwmniad.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_mdVUFmfixzh8L-NxvcREsA_tizbBXk_';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let myChart;
+
+        // AUTH LOGIC
+        window.onload = async () => {
+            const { data: { session } } = await _supabase.auth.getSession();
+            if (session) { showMain(); }
+        };
+
+        async function handleSignUp() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const { error } = await _supabase.auth.signUp({ email, password });
+            if (error) alert(error.message);
+            else alert("Check your email for the confirmation link!");
+        }
+
+        async function handleLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const { error } = await _supabase.auth.signInWithPassword({ email, password });
+            if (error) alert(error.message);
+            else showMain();
+        }
+
+        function showMain() {
+            document.getElementById('auth-section').style.display = 'none';
+            document.getElementById('main-section').style.display = 'block';
+            loadTrends();
+        }
+
+        function handleLogout() {
+            _supabase.auth.signOut();
+            location.reload();
+        }
+
+        // DATA LOGIC
+        async function loadTrends() {
+            const { data: { user } } = await _supabase.auth.getUser();
+            const currentExercise = document.getElementById('ui_exercise').value;
+
+            if (!user || !currentExercise) return;
+
+            try {
+                // 1. Fetch only THIS user's data
+                const response = await fetch(`/get_trends?user_id=${user.id}`);
+                const allData = await response.json();
+
+                // 2. Filter only the specific exercise (e.g., only "Squat")
+                const filteredData = allData.filter(row => 
+                    row.exercise.toLowerCase() === currentExercise.toLowerCase()
+                );
+
+                if (filteredData.length === 0) {
+                    console.log("No data for this specific exercise yet.");
+                    return;
+                }
+
+                const labels = filteredData.map(row => new Date(row.created_at).toLocaleDateString());
+                const values = filteredData.map(row => row['1RM']);
+                const ctx = document.getElementById('strengthChart').getContext('2d');
+                
+                if (myChart) { myChart.destroy(); }
+                myChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: `${currentExercise} - 1RM Progress`,
+                            data: values,
+                            borderColor: '#007bff',
+                            backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                            fill: true,
+                            tension: 0.3
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            } catch (err) { console.error("Graph Error:", err); }
+        }
+
+        async function saveToDatabase() {
+            // We get the user ID from the active session
+            const { data: { user } } = await _supabase.auth.getUser();
+            
+            const payload = {
+                exercise: document.getElementById('ui_exercise').value,
+                weight: document.getElementById('ui_weight').value,
+                reps: document.getElementById('ui_reps').value,
+                user_id: user.id // Pass the logged-in ID to Python
+            };
+
+            const response = await fetch('/add_workout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+            if (result.status === "success") {
+                loadTrends();
+            } else {
+                alert("Error: " + result.message);
+            }
+        }
+    </script>
+</body>
+</html>
