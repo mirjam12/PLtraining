@@ -98,7 +98,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
-const SUPABASE_URL = 'https://ytlrutgvhvcxlnwmniad.supabase.co';
+const SUPABASE_URL = 'https://ytlrutgvhvcxlnwmniad.supabase.co/rest/v1/Trainings';
 const SUPABASE_KEY = 'sb_publishable_mdVUFmfixzh8L-NxvcREsA_tizbBXk_';
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -145,6 +145,12 @@ async function loadTrends() {
     if (!user || !exercise) return;
 
     const res = await fetch(`/get_trends?user_id=${user.id}`);
+    
+    // if error, give me error info:
+    if (!res.ok) {
+    console.error("Backend error:", await res.text());
+    return;
+}
     const data = await res.json();
 
     const filtered = data.filter(r =>

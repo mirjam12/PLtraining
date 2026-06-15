@@ -87,8 +87,8 @@ def add_workout():
             "one_rm": one_rm,
             "user_id": user_id
         }
-
-        headers = {
+        #duplicated part:
+        '''headers = {
                 "apikey": KEY,
                 "Authorization": f"Bearer {KEY}",
                 "Content-Type": "application/json",
@@ -97,8 +97,9 @@ def add_workout():
 
         print("4. Sending to Supabase...")
         response = requests.post(URL, json=payload, headers=headers)
-        print(f"5. Supabase Result: {response.status_code}")
-                
+        print(f"5. Supabase Result: {response.status_code}") '''
+        # end of duplication 
+           
         response = supabase.table("Trainings").insert(payload).execute()
 
         if response.data:
