@@ -98,7 +98,7 @@ def add_workout():
             return row[reps_index]
 
         base_one_rm = weight / get_rpe_multiplier(rpe, reps)
-        one_rm = round(base_one_rm, 1)
+        one_rm = round(weight / (percentage / 100), 1)
 
         print(f"3. Calculated 1RM: {one_rm}")
 
