@@ -98,7 +98,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
-const SUPABASE_URL = 'https://ytlrutgvhvcxlnwmniad.supabase.co/rest/v1/Trainings';
+const SUPABASE_URL = 'https://ytlrutgvhvcxlnwmniad.supabase.co/';
 const SUPABASE_KEY = 'sb_publishable_mdVUFmfixzh8L-NxvcREsA_tizbBXk_';
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -121,7 +121,9 @@ async function handleSignUp() {
 async function handleLogin() {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
-    const { error } = await _supabase.auth.signInWithPassword({ email, password });
+    const { data , error } = await _supabase.auth.signInWithPassword({ email, password });
+    console.log("LOGIN DATA:", data);
+    console.log("LOGIN ERROR:", error);
     if (error) alert(error.message);
     else showMain();
 }
