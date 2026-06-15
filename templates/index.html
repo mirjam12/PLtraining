@@ -153,7 +153,11 @@ async function loadTrends() {
     console.error("Backend error:", await res.text());
     return;
 }
+    console.log("HTTP Status:", res.status);
     const data = await res.json();
+    // checking errors
+    console.log("Returned data:", data);
+    console.log("Is array?", Array.isArray(data));
 
     const filtered = data.filter(r =>
         r.exercise.toLowerCase() === exercise.toLowerCase()
@@ -189,7 +193,7 @@ async function saveToDatabase() {
         alert("You are not logged in.");
         return;
     }
-    
+
     const payload = {
         exercise: document.getElementById("ui_exercise").value,
         weight: document.getElementById("ui_weight").value,
