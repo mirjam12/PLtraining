@@ -82,6 +82,7 @@ def add_workout():
 
         '''rpe_factor = rpe_factor_map.get(rpe, 1.0)
         one_rm = round(base_one_rm / rpe_factor, 1)'''
+
         def get_rpe_multiplier(rpe, reps):
             if rpe not in RPE_TABLE:
                 return 1.0
@@ -97,7 +98,7 @@ def add_workout():
 
             return row[reps_index]
 
-        percentage = weight / get_rpe_multiplier(rpe, reps)
+        percentage = get_rpe_multiplier(rpe, reps)
         one_rm = round(weight / (percentage / 100), 1)
 
         print(f"3. Calculated 1RM: {one_rm}")
