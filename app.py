@@ -38,7 +38,7 @@ supabase = create_client(URL, KEY)
 @app.route('/coach')
 def coach():
     return render_template('coach.html')
-    
+
 @app.route('/get_user_progress', methods=['GET'])
 def get_user_progress():
     user_id = request.args.get('user_id')
@@ -55,17 +55,8 @@ def get_user_progress():
 
 @app.route('/get_users', methods=['GET'])
 def get_users():
-    response = supabase.table("profiles").select("id").execute()
+    response = supabase.table("profiles").select("id,name").execute()
     return jsonify(response.data)
-
-const users = await fetch("/get_users").then(r => r.json());
-
-users.forEach(u => {
-    const option = document.createElement("option");
-    option.value = u.id;
-    option.textContent = u.id;
-    userSelect.appendChild(option);
-});
 
 # =========================
 # FRONTEND

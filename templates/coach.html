@@ -1,15 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Coach Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
 
 <h2>Progress Dashboard</h2>
 
-<select id="userSelect" onchange="loadUser()"></select>
+<select id="userSelect" onchange="loadUser()">
+    <option value="">Select athlete</option>
+</select>
 
 <canvas id="chart"></canvas>
+
+<script>
+
+let myChart;
+
+async function loadUsers() {
+    const users = await fetch("/get_users").then(r => r.json());
+
+    const userSelect = document.getElementById("userSelect");
+
+    users.forEach(u => {
+        const option = document.createElement("option");
+        option.value = u.id;
+        option.textContent = u.id;   // later you can show names instead
+        userSelect.appendChild(option);
+    });
+}
 
 async function loadUser() {
     const userId = document.getElementById("userSelect").value;
 
+    if (!userId) return;
+
     const res = await fetch(`/get_user_progress?user_id=${userId}`);
     const data = await res.json();
 
-    updateChart(data);
+    const labels = data.map(r =>
+        new Date(r.created_at).toLocaleDateString()
+    );
+
+    const values = data.map(r => r.one_rm);
+
+    const ctx = document.getElementById("chart").getContext("2d");
+
+    if (myChart) myChart.destroy();
+
+    myChart = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels,
+            datasets: [{
+                label: "Estimated 1RM",
+                data: values,
+                borderColor: "#ff9eb5",
+                backgroundColor: "rgba(255,158,181,0.2)",
+                fill: true
+            }]
+        }
+    });
 }
+
+loadUsers();
+
+</script>
+
+</body>
+</html>
