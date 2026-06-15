@@ -183,7 +183,13 @@ async function loadTrends() {
 // SAVE DATA
 async function saveToDatabase() {
     const { data: { user } } = await _supabase.auth.getUser();
+    console.log("CURRENT USER:", user);
 
+    if (!user) {
+        alert("You are not logged in.");
+        return;
+    }
+    
     const payload = {
         exercise: document.getElementById("ui_exercise").value,
         weight: document.getElementById("ui_weight").value,
