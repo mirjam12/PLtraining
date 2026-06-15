@@ -118,7 +118,7 @@ def add_workout():
 # =========================
 # GET TRENDS
 # =========================
-@app.route('/get_trends', methods=['GET'])
+'''@app.route('/get_trends', methods=['GET'])
 def get_trends():
     headers = {
         "apikey": KEY,
@@ -132,7 +132,23 @@ def get_trends():
 
     response = requests.get(query_url, headers=headers)
     
-    return jsonify(response.json())
+    return jsonify(response.json())'''
+    #end of old version
+    
+@app.route('/get_trends', methods=['GET'])
+def get_trends():
+    user_id = request.args.get('user_id')
+
+    response = (
+        supabase
+        .table("Trainings")
+        .select("*")
+        .eq("user_id", user_id)
+        .order("created_at", desc=False)
+        .execute()
+    )
+
+    return jsonify(response.data)
 
 
 if __name__ == '__main__':
