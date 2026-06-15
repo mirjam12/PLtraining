@@ -1,0 +1,15 @@
+
+<h2>Progress Dashboard</h2>
+
+<select id="userSelect" onchange="loadUser()"></select>
+
+<canvas id="chart"></canvas>
+
+async function loadUser() {
+    const userId = document.getElementById("userSelect").value;
+
+    const res = await fetch(`/get_user_progress?user_id=${userId}`);
+    const data = await res.json();
+
+    updateChart(data);
+}

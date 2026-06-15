@@ -8,7 +8,7 @@
 # ===========================
 # if I want to use chatGPT in my personal project:
 # from langchain_openai import ChatOpenAI
-# 11m = ChatOpenAI (model="gpt-40-mini")
+# 11m = ChatOpenAI (model="gpt-40-mini") 
 # ==========================
 
 from flask import Flask, render_template, request, jsonify
@@ -32,7 +32,40 @@ if not URL or not KEY:
 
 supabase = create_client(URL, KEY)
 
+# =============================
+# coach's view: 
+# ======================
+@app.route('/coach')
+def coach():
+    return render_template('coach.html')
+    
+@app.route('/get_user_progress', methods=['GET'])
+def get_user_progress():
+    user_id = request.args.get('user_id')
 
+    response = (
+        supabase.table("Trainings")
+        .select("*")
+        .eq("user_id", user_id)
+        .order("created_at", desc=False)
+        .execute()
+    )
+
+    return jsonify(response.data)
+
+@app.route('/get_users', methods=['GET'])
+def get_users():
+    response = supabase.table("profiles").select("id").execute()
+    return jsonify(response.data)
+
+const users = await fetch("/get_users").then(r => r.json());
+
+users.forEach(u => {
+    const option = document.createElement("option");
+    option.value = u.id;
+    option.textContent = u.id;
+    userSelect.appendChild(option);
+});
 
 # =========================
 # FRONTEND
