@@ -3,7 +3,27 @@
 <head>
     <title>Coach Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        #chartsContainer {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+            margin-top: 20px;
+        }
+
+        .chartBox {
+            width: 600px;
+        }
+    </style>
 </head>
+
 <body>
 
 <h2>Progress Dashboard</h2>
@@ -12,24 +32,55 @@
     <option value="">Select athlete</option>
 </select>
 
-<canvas id="chart"></canvas>
+<div id="chartsContainer"></div>
 
 <script>
 
-let myChart;
+const SUPABASE_URL = "https://ytlrutgvhvcxlnwmniad.supabase.co";
+const SUPABASE_KEY = "YOUR_PUBLIC_ANON_KEY"; // make sure this is correct
+
+const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let charts = {};
+
+//  USERS 
 
 async function loadUsers() {
-    const users = await fetch("/get_users").then(r => r.json());
+    const { data: { session } } = await _supabase.auth.getSession();
 
-    const userSelect = document.getElementById("userSelect");
+    if (!session) {
+        console.error("No session found");
+        return;
+    }
+
+    const token = session.access_token;
+
+    const res = await fetch(`/get_users?token=${token}`);
+
+    if (!res.ok) {
+        console.error("Failed loading users:", await res.text());
+        return;
+    }
+
+    const users = await res.json();
+
+    console.log("USERS:", users); // 🔥 DEBUG LINE
+
+    const select = document.getElementById("userSelect");
+
+    select.innerHTML = `<option value="">Select athlete</option>`;
 
     users.forEach(u => {
         const option = document.createElement("option");
-        option.value = u.id;
-        option.textContent = u.id;   // later you can show names instead
-        userSelect.appendChild(option);
+
+        option.value = u.user_id;   // IMPORTANT
+        option.textContent = u.name;
+
+        select.appendChild(option);
     });
 }
+
+//  LOAD USER DATA 
 
 async function loadUser() {
     const userId = document.getElementById("userSelect").value;
@@ -37,32 +88,89 @@ async function loadUser() {
     if (!userId) return;
 
     const res = await fetch(`/get_user_progress?user_id=${userId}`);
+
+    if (!res.ok) {
+        console.error(await res.text());
+        return;
+    }
+
     const data = await res.json();
 
-    const labels = data.map(r =>
-        new Date(r.created_at).toLocaleDateString()
-    );
+    const grouped = {};
 
-    const values = data.map(r => r.one_rm);
+    data.forEach(r => {
+        if (!grouped[r.exercise]) grouped[r.exercise] = [];
+        grouped[r.exercise].push(r);
+    });
 
-    const ctx = document.getElementById("chart").getContext("2d");
+    renderAllExercises(grouped);
+}
 
-    if (myChart) myChart.destroy();
+//  CHART RENDERING 
 
-    myChart = new Chart(ctx, {
-        type: "line",
-        data: {
-            labels,
-            datasets: [{
-                label: "Estimated 1RM",
-                data: values,
-                borderColor: "#ff9eb5",
-                backgroundColor: "rgba(255,158,181,0.2)",
-                fill: true
-            }]
-        }
+function renderAllExercises(data) {
+    const container = document.getElementById("chartsContainer");
+    container.innerHTML = "";
+
+    Object.values(charts).forEach(c => c.destroy());
+    charts = {};
+
+    const exercises = Object.keys(data);
+
+    exercises.forEach((exercise, idx) => {
+
+        const rows = data[exercise];
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "chartBox";
+
+        const title = document.createElement("h3");
+        title.textContent = exercise;
+
+        const canvas = document.createElement("canvas");
+
+        wrapper.appendChild(title);
+        wrapper.appendChild(canvas);
+        container.appendChild(wrapper);
+
+        const ctx = canvas.getContext("2d");
+
+        const labels = rows.map(r =>
+            new Date(r.created_at).toLocaleDateString()
+        );
+
+        const values = rows.map(r => r.one_rm);
+
+        charts[exercise] = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels,
+                datasets: [{
+                    label: `${exercise} 1RM`,
+                    data: values,
+                    borderColor: getColor(idx),
+                    fill: false
+                }]
+            }
+        });
     });
 }
+
+// pretty colors 
+
+function getColor(i) {
+    const colors = [
+        "#ff9eb5",
+        "#7cc6fe",
+        "#a3e635",
+        "#f59e0b",
+        "#c084fc",
+        "#34d399"
+    ];
+    return colors[i % colors.length];
+}
+
+//  INIT 
 
 loadUsers();
 

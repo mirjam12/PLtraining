@@ -107,130 +107,155 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
-const SUPABASE_URL = 'https://ytlrutgvhvcxlnwmniad.supabase.co/';
-const SUPABASE_KEY = 'sb_publishable_mdVUFmfixzh8L-NxvcREsA_tizbBXk_';
-const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-let myChart;
-
-// AUTH
-window.onload = async () => {
-    const { data: { session } } = await _supabase.auth.getSession();
-    if (session) showMain();
-};
-
-async function handleSignUp() {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    const { error } = await _supabase.auth.signUp({ email, password });
-    if (error) alert(error.message);
-    else alert("Check your email for the confirmation link!");
-}
-
-async function handleLogin() {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    const { data , error } = await _supabase.auth.signInWithPassword({ email, password });
-    console.log("LOGIN DATA:", data);
-    console.log("LOGIN ERROR:", error);
-    if (error) alert(error.message);
-    else showMain();
-}
-
-function showMain() {
-    document.getElementById("auth-section").style.display = "none";
-    document.getElementById("main-section").style.display = "block";
-    loadTrends();
-}
-
-function handleLogout() {
-    _supabase.auth.signOut();
-    location.reload();
-}
-
-// LOAD DATA
-async function loadTrends() {
-    const { data: { user } } = await _supabase.auth.getUser();
-    const exercise = document.getElementById("ui_exercise").value;
-
-    if (!user || !exercise) return;
-
-    const res = await fetch(`/get_trends?user_id=${user.id}`);
+    const SUPABASE_URL = 'https://ytlrutgvhvcxlnwmniad.supabase.co/';
+    const SUPABASE_KEY = 'sb_publishable_mdVUFmfixzh8L-NxvcREsA_tizbBXk_';
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
-    // if error, give me error info:
-    if (!res.ok) {
-    console.error("Backend error:", await res.text());
-    return;
-}
-    console.log("HTTP Status:", res.status);
-    const data = await res.json();
-    // checking errors
-    console.log("Returned data:", data);
-    console.log("Is array?", Array.isArray(data));
+    let myChart;
+    
+    // AUTH
+    window.onload = async () => {
+        const { data: { session } } = await _supabase.auth.getSession();
+        if (session) showMain();
+    };
+    
+    async function handleSignUp() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+    
+        const { error } = await _supabase.auth.signUp({ email, password });
+    
+        if (error) alert(error.message);
+        else alert("Check your email for the confirmation link!");
+    }
+    
+    // LOGIN 
+    async function handleLogin() {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
 
-    const filtered = data.filter(r =>
-    (r.exercise || "").trim() === exercise
-    );
+    const { data, error } =
+        await _supabase.auth.signInWithPassword({ email, password });
 
-    const labels = filtered.map(r => new Date(r.created_at).toLocaleDateString());
-    const values = filtered.map(r => r["one_rm"]);
-
-    const ctx = document.getElementById("strengthChart").getContext("2d");
-
-    if (myChart) myChart.destroy();
-
-    myChart = new Chart(ctx, {
-        type: "line",
-        data: {
-            labels,
-            datasets: [{
-                label: exercise + " one_rm",
-                data: values,
-                // making the graph pretty & pink:
-                borderColor: "#5c3d4a",
-                backgroundColor: "rgba(255,105,180,0.2)", 
-                pointBackgroundColor: "#5c3d4a",
-                pointBorderColor: "#5c3d4a",
-                pointRadius: 5,
-                tension: 0.3,                   // smooth curve
-                fill: true
-            }]
-        }
-    });
-}
-
-// SAVE DATA
-async function saveToDatabase() {
-    const { data: { user } } = await _supabase.auth.getUser();
-    console.log("CURRENT USER:", user);
-
-    if (!user) {
-        alert("You are not logged in.");
+    if (error) {
+        alert(error.message);
         return;
     }
 
-    const payload = {
-        exercise: document.getElementById("ui_exercise").value,
-        weight: document.getElementById("ui_weight").value,
-        reps: document.getElementById("ui_reps").value,
-        rpe: document.getElementById("ui_rpe").value,
-        user_id: user.id
-    };
+    const { data: { session } } = await _supabase.auth.getSession();
 
-    const res = await fetch("/add_workout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-    });
+    const token = session.access_token;
 
-    const result = await res.json();
+    // ask backend who I am
+    const res = await fetch(`/me?token=${token}`);
 
-    if (result.status === "success") {
-        loadTrends();
+    if (!res.ok) {
+        alert("Failed to check role");
+        return;
+    }
+
+    const profile = await res.json();
+
+    console.log("PROFILE:", profile);
+
+    if (profile.is_admin === true) {
+        window.location.href = "/coach?token=" + token;
     } else {
-        alert(result.message);
+        showMain();
     }
 }
+    // 
+    function showMain() {
+        document.getElementById("auth-section").style.display = "none";
+        document.getElementById("main-section").style.display = "block";
+        loadTrends();
+    }
+    
+    function handleLogout() {
+        _supabase.auth.signOut();
+        location.reload();
+    }
+    
+    // LOAD DATA
+    async function loadTrends() {
+        const { data: { user } } = await _supabase.auth.getUser();
+        const exercise = document.getElementById("ui_exercise").value;
+    
+        if (!user || !exercise) return;
+    
+        const res = await fetch(`/get_trends?user_id=${user.id}`);
+    
+        if (!res.ok) {
+            console.error("Backend error:", await res.text());
+            return;
+        }
+    
+        const data = await res.json();
+    
+        const filtered = data.filter(r =>
+            (r.exercise || "").trim() === exercise
+        );
+    
+        const labels = filtered.map(r =>
+            new Date(r.created_at).toLocaleDateString()
+        );
+    
+        const values = filtered.map(r => r["one_rm"]);
+    
+        const ctx = document.getElementById("strengthChart").getContext("2d");
+    
+        if (myChart) myChart.destroy();
+    
+        myChart = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels,
+                datasets: [{
+                    label: exercise + " one_rm",
+                    data: values,
+                    borderColor: "#5c3d4a",
+                    backgroundColor: "rgba(255,105,180,0.2)",
+                    pointBackgroundColor: "#5c3d4a",
+                    pointBorderColor: "#5c3d4a",
+                    pointRadius: 5,
+                    tension: 0.3,
+                    fill: true
+                }]
+            }
+        });
+    }
+    
+    // SAVE DATA
+    async function saveToDatabase() {
+        const { data: { user } } = await _supabase.auth.getUser();
+    
+        if (!user) {
+            alert("You are not logged in.");
+            return;
+        }
+    
+        const payload = {
+            exercise: document.getElementById("ui_exercise").value,
+            weight: document.getElementById("ui_weight").value,
+            reps: document.getElementById("ui_reps").value,
+            rpe: document.getElementById("ui_rpe").value,
+            user_id: user.id
+        };
+    
+        const res = await fetch("/add_workout", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+    
+        const result = await res.json();
+    
+        if (result.status === "success") {
+            loadTrends();
+        } else {
+            alert(result.message);
+        }
+    }
 </script>
 
 </body>
